@@ -29,17 +29,18 @@ import java.util.Random;
 
 import static org.camunda.optimize.hiring.data.generation.VariableHelper.createBooleanVariable;
 import static org.camunda.optimize.hiring.data.generation.VariableHelper.createLongVariable;
+import static org.camunda.optimize.hiring.data.generation.VariableHelper.createStringVariable;
 
 public class Main {
 
   // Task ids
-  private static final String ASSIGN_HIRING_MANAGER = "Task_HiringManager";
-  private static final String SCREEN_APPLICATION = "Task_ScreenApplication";
-  private static final String CONDUCT_PHONE_INTERVIEW = "Task_ConductPhoneInterview";
-  private static final String CONDUCT_FIRST_ONSITE_INTERVIEW = "Task_Conduct1OnsiteInterview";
-  private static final String CONDUCT_SECOND_ONSITE_INTERVIEW = "Task_Conduct2OnsiteInterview";
-  private static final String MAKE_AN_OFFER = "Task_MakeOffer";
-  private static final String CANDIDATE_REPLIED = "Task_CandidateReplied";
+  private static final String ASSIGN_HIRING_MANAGER = "HiringManager";
+  private static final String SCREEN_APPLICATION = "ScreenApplication";
+  private static final String CONDUCT_PHONE_INTERVIEW = "ConductPhoneInterview";
+  private static final String CONDUCT_FIRST_ONSITE_INTERVIEW = "Conduct1OnsiteInterview";
+  private static final String CONDUCT_SECOND_ONSITE_INTERVIEW = "Conduct2OnsiteInterview";
+  private static final String MAKE_AN_OFFER = "MakeOffer";
+  private static final String CANDIDATE_REPLIED = "CandidateReplied";
 
   private static Random random = new Random();
   private static ObjectMapper objectMapper = new ObjectMapper();
@@ -73,8 +74,39 @@ public class Main {
     }
     randomizeAutomaticTaskAssignment(variables);
     randomizeSecondOnsiteInterview(variables);
+    addUncorrelatedVariables(variables);
+    candidateNotCancelled(variables);
     addTaskDurations(variables);
     return variables;
+  }
+
+  private static void candidateNotCancelled(Map<String, VariableValue> variables) {
+    variables.put("CandidateCancelled", createBooleanVariable(false));
+  }
+
+  private static void candidateCancelled(Map<String, VariableValue> variables) {
+    variables.put("CandidateCancelled", createBooleanVariable(true));
+  }
+
+  private static void addUncorrelatedVariables(Map<String, VariableValue> variables) {
+    String[] positions = {"Software Developer", "Teamlead", "Account Manager", "DevOps Engineer",
+      "Sales Representative", "Software Architect", "Recruiting Manager", "Marketing Manager"};
+    String[] departments = {"IT", "IT", "Sales", "IT", "Sales", "IT", "HR", "Marketing"};
+    int index = random.nextInt(7);
+    String position = positions[index];
+    String department = departments[index];
+    variables.put("Position", createStringVariable(position));
+    variables.put("Department", createStringVariable(department));
+    String[] jobExperienceLevels = {"Associate", "Mid-Senior", "Beginner", "Senior"};
+    index = random.nextInt(4);
+    String jobExperienceLevel = jobExperienceLevels[index];
+    variables.put("JobExperienceLevel", createStringVariable(jobExperienceLevel));
+    String[] salaryExpectationLevels = {"30 000 - 40 000", "40 000 - 50 000", "50 000 - 60 000", "60 000 - 70 000", "70 000 - 80 000", "80 000 - 90 000"};
+    index = random.nextInt(6);
+    String salaryExpectation = salaryExpectationLevels[index];
+    variables.put("SalaryExpectation", createStringVariable(salaryExpectation));
+    String domesticType  = random.nextDouble() < 0.8? "national" : "international";
+    variables.put("DomesticType", createStringVariable(domesticType));
   }
 
   private static Map<String, VariableValue> assignHiringManagerPath() {
@@ -90,14 +122,14 @@ public class Main {
   }
 
   private static Map<String, VariableValue> rejectCandidateAfterScreenApplication() {
-    Map<String, VariableValue> variables = new HashMap<>();
+    Map<String, VariableValue> variables = createHappyPath();
     randomizeAutomaticTaskAssignment(variables);
     variables.put(TASK_SCREEN_PROCEED, createBooleanVariable(false));
     return variables;
   }
 
   private static Map<String, VariableValue> rejectCandidateAfterPhoneInterview() {
-    Map<String, VariableValue> variables = new HashMap<>();
+    Map<String, VariableValue> variables = createHappyPath();
     randomizeAutomaticTaskAssignment(variables);
     variables.put(TASK_SCREEN_PROCEED, createBooleanVariable(true));
     variables.put(TASK_PHONE_PROCEED, createBooleanVariable(false));
@@ -105,7 +137,7 @@ public class Main {
   }
 
   private static Map<String, VariableValue> rejectCandidateAfterOnsiteInterview() {
-    Map<String, VariableValue> variables = new HashMap<>();
+    Map<String, VariableValue> variables = createHappyPath();
     randomizeAutomaticTaskAssignment(variables);
     variables.put(TASK_SCREEN_PROCEED, createBooleanVariable(true));
     variables.put(TASK_PHONE_PROCEED, createBooleanVariable(true));
@@ -160,13 +192,18 @@ public class Main {
   }
 
   private static void addConductFirstOnsiteInterviewDuration(Map<String, VariableValue> variables) {
-    long duration = calculateDuration(2 * weeks, 3 * days);
+    long duration = calculateDuration(4 * days, 2 * days);
     variables.put(CONDUCT_FIRST_ONSITE_INTERVIEW, createLongVariable(duration));
   }
 
   private static void addConductSecondOnsiteInterviewDuration(Map<String, VariableValue> variables) {
     long duration = calculateDuration(1 * weeks, 1 * days);
     variables.put(CONDUCT_SECOND_ONSITE_INTERVIEW, createLongVariable(duration));
+  }
+
+  private static void addConductFirstOnsiteInterviewDurationWithCustomDistribution(Map<String, VariableValue> variables, long mean, long deviation) {
+    long duration = calculateDuration(mean, deviation);
+    variables.put(CONDUCT_FIRST_ONSITE_INTERVIEW, createLongVariable(duration));
   }
 
   private static void addMakeAnOfferDuration(Map<String, VariableValue> variables) {
@@ -180,7 +217,7 @@ public class Main {
   }
 
   private static long calculateDuration(long mean, long deviation) {
-    return Math.round(random.nextGaussian() * deviation) + mean;
+    return Math.abs(Math.round(random.nextGaussian() * deviation) + mean);
   }
 
   // ------
@@ -239,7 +276,9 @@ public class Main {
   private static void cancelAtAssignHiringManager(int count) throws IOException {
     // TODO: about 15 %
     for (int i = 0; i < count; i++) {
-      startProcessInstance(assignHiringManagerPath());
+      Map<String, VariableValue> variables = assignHiringManagerPath();
+      candidateCancelled(assignHiringManagerPath());
+      startProcessInstance(variables);
     }
     sendCandidateCancelEvent();
   }
@@ -247,7 +286,9 @@ public class Main {
   private static void cancelAtScreenApplication(int count) throws IOException {
     // TODO: circa 80%
     for (int i = 0; i < count; i++) {
-      startProcessInstance(automaticHiringManagerAssignmentPath());
+      Map<String, VariableValue> variables = automaticHiringManagerAssignmentPath();
+      candidateCancelled(variables);
+      startProcessInstance(variables);
     }
     sendCandidateCancelEvent();
   }
@@ -255,7 +296,9 @@ public class Main {
   private static void cancelAtConductPhoneInterview(int count) throws IOException {
     // TODO: 33 %
     for (int i = 0; i < count; i++) {
-      startProcessInstance(createHappyPath());
+      Map<String, VariableValue> variables = createHappyPath();
+      candidateCancelled(variables);
+      startProcessInstance(variables);
     }
     UserTaskCompleter userTaskCompleter = new UserTaskCompleter();
     userTaskCompleter.completeUserTasks(ASSIGN_HIRING_MANAGER);
@@ -265,7 +308,9 @@ public class Main {
 
   private static void cancelAtFirstOnsiteInterview(int count) throws IOException {
     for (int i = 0; i < count; i++) {
-      startProcessInstance(createHappyPath());
+      Map<String, VariableValue> variables = createHappyPath();
+      candidateCancelled(variables);
+      startProcessInstance(variables);
     }
     UserTaskCompleter userTaskCompleter = new UserTaskCompleter();
     userTaskCompleter.completeUserTasks(ASSIGN_HIRING_MANAGER);
@@ -276,7 +321,9 @@ public class Main {
 
   private static void cancelAtSecondOnsiteInterview(int count) throws IOException {
     for (int i = 0; i < count; i++) {
-      startProcessInstance(createHappyPath());
+      Map<String, VariableValue> variables = createHappyPath();
+      candidateCancelled(variables);
+      startProcessInstance(variables);
     }
     UserTaskCompleter userTaskCompleter = new UserTaskCompleter();
     userTaskCompleter.completeUserTasks(ASSIGN_HIRING_MANAGER);
@@ -289,7 +336,9 @@ public class Main {
   private static void cancelAtMakeAnOffer(int count) throws IOException {
     // TODO: 15 %
     for (int i = 0; i < count; i++) {
-      startProcessInstance(createHappyPath());
+      Map<String, VariableValue> variables = createHappyPath();
+      candidateCancelled(variables);
+      startProcessInstance(variables);
     }
     UserTaskCompleter userTaskCompleter = new UserTaskCompleter();
     userTaskCompleter.completeUserTasks(ASSIGN_HIRING_MANAGER);
@@ -297,6 +346,22 @@ public class Main {
     userTaskCompleter.completeUserTasks(CONDUCT_PHONE_INTERVIEW);
     userTaskCompleter.completeUserTasks(CONDUCT_FIRST_ONSITE_INTERVIEW);
     userTaskCompleter.completeUserTasks(CONDUCT_SECOND_ONSITE_INTERVIEW);
+    sendCandidateCancelEvent();
+  }
+
+  private static void cancelAtFirstOnsiteInterviewWithCorrelatedVariables(int count) throws IOException {
+    for (int i = 0; i < count; i++) {
+      Map<String, VariableValue> variables = createHappyPath();
+      candidateCancelled(variables);
+      addConductFirstOnsiteInterviewDurationWithCustomDistribution(variables, 2* weeks, 3 * days);
+      String domesticType  = random.nextDouble() < 0.1? "national" : "international";
+      variables.put("DomesticType", createStringVariable(domesticType));
+      startProcessInstance(variables);
+    }
+    UserTaskCompleter userTaskCompleter = new UserTaskCompleter();
+    userTaskCompleter.completeUserTasks(ASSIGN_HIRING_MANAGER);
+    userTaskCompleter.completeUserTasks(SCREEN_APPLICATION);
+    userTaskCompleter.completeUserTasks(CONDUCT_PHONE_INTERVIEW);
     sendCandidateCancelEvent();
   }
 
@@ -313,6 +378,7 @@ public class Main {
   private static final int SCREEN_APPLICATION_CANCEL_COUNT = 600;
   private static final int CONDUCT_PHONE_INTERVIEW_CANCEL_COUNT = 120;
   private static final int CONDUCT_FIRST_ONSITE_INTERVIEW_CANCEL_COUNT = 24;
+  private static final int CONDUCT_FIRST_ONSITE_INTERVIEW_CANCEL_CORRELATED_COUNT = 50;
   private static final int CONDUCT_SECOND_ONSITE_INTERVIEW_CANCEL_COUNT = 15;
   private static final int MAKE_AN_OFFER_CANCEL_COUNT = 45;
 
@@ -355,6 +421,7 @@ public class Main {
     cancelAtConductPhoneInterview(CONDUCT_PHONE_INTERVIEW_CANCEL_COUNT);
     System.out.println("Finished phone interview cancellation");
     cancelAtFirstOnsiteInterview(CONDUCT_FIRST_ONSITE_INTERVIEW_CANCEL_COUNT);
+    cancelAtFirstOnsiteInterviewWithCorrelatedVariables(CONDUCT_FIRST_ONSITE_INTERVIEW_CANCEL_CORRELATED_COUNT);
     cancelAtSecondOnsiteInterview(CONDUCT_SECOND_ONSITE_INTERVIEW_CANCEL_COUNT);
     cancelAtMakeAnOffer(MAKE_AN_OFFER_CANCEL_COUNT);
     System.out.println("Finished make an offer cancelation");
