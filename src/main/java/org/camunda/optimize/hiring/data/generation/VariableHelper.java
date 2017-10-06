@@ -27,4 +27,8 @@ public class VariableHelper {
   public static VariableValue createLongVariable(long value) {
     return new VariableValue(value, "Long");
   }
+
+  public static VariableValue createIntegerVariable(int value) {
+    return new VariableValue(value, "Integer");
+  }
 }
