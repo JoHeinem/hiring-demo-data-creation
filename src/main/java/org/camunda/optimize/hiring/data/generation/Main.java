@@ -75,7 +75,20 @@ public class Main {
       variables.put(variableName, createBooleanVariable(true));
     }
     randomizeAutomaticTaskAssignment(variables);
-    randomizeSecondOnsiteInterview(variables);
+    performSecondOnsiteInterview(variables);
+    addHiringInformationVariables(variables);
+    candidateNotCancelled(variables);
+    addTaskDurations(variables);
+    return variables;
+  }
+
+  private static Map<String, VariableValue> createHappyPathWihtouSecondOnsiteInterview() {
+    Map<String, VariableValue> variables = new HashMap<>();
+    for (String variableName : allVariableNames) {
+      variables.put(variableName, createBooleanVariable(true));
+    }
+    randomizeAutomaticTaskAssignment(variables);
+    dontPerformSecondOnsiteInterview(variables);
     addHiringInformationVariables(variables);
     candidateNotCancelled(variables);
     addTaskDurations(variables);
@@ -141,7 +154,7 @@ public class Main {
     randomizeAutomaticTaskAssignment(variables);
     variables.put(TASK_SCREEN_PROCEED, createBooleanVariable(true));
     variables.put(TASK_PHONE_PROCEED, createBooleanVariable(true));
-    randomizeSecondOnsiteInterview(variables);
+    performSecondOnsiteInterview(variables);
     variables.put(TASK_MAKE_OFFER, createBooleanVariable(false));
     return variables;
   }
@@ -149,6 +162,13 @@ public class Main {
   private static Map<String, VariableValue> looseCandidate() {
     Map<String, VariableValue> variables = createHappyPath();
     variables.put(TASK_OFFER_ACCEPTED, createBooleanVariable(false));
+    return variables;
+  }
+
+  private static Map<String, VariableValue> looseCandidateWihtoutSecondOnsiteinterview() {
+    Map<String, VariableValue> variables = createHappyPath();
+    variables.put(TASK_OFFER_ACCEPTED, createBooleanVariable(false));
+    dontPerformSecondOnsiteInterview(variables);
     return variables;
   }
 
@@ -170,10 +190,16 @@ public class Main {
     variables.put(TASK_AUTOMATICALLY_ASSIGNED, createBooleanVariable(taskAutomaticallyAssigned));
   }
 
-  private static void randomizeSecondOnsiteInterview(Map<String, VariableValue> variables) {
+  private static void performSecondOnsiteInterview(Map<String, VariableValue> variables) {
     int coin = random.nextInt(2);
     boolean taskSecondOnsiteInterview = coin != 0;
-    variables.put(TASK_ONSITE_INTERVIEW, createBooleanVariable(taskSecondOnsiteInterview));
+    variables.put(TASK_ONSITE_INTERVIEW, createBooleanVariable(true));
+  }
+
+  private static void dontPerformSecondOnsiteInterview(Map<String, VariableValue> variables) {
+    int coin = random.nextInt(2);
+    boolean taskSecondOnsiteInterview = coin != 0;
+    variables.put(TASK_ONSITE_INTERVIEW, createBooleanVariable(false));
   }
 
   private static void addAssignHiringManagerDuration(Map<String, VariableValue> variables) {
@@ -342,11 +368,13 @@ public class Main {
 
   // -----
 
-  private static final int HAPPY_PATH_COUNT = 240;
+  private static final int HAPPY_PATH_COUNT = 40;
+  private static final int HAPPY_PATH_COUNT_WITHOUT_SECOND_ONSITE = 200;
   private static final int REJECT_AFTER_SCREENING_COUNT = 3778;
   private static final int REJECT_AFTER_PHONE_COUNT = 2790;
   private static final int REJECT_AFTER_ONSITE_COUNT = 1282;
-  private static final int LOOSE_CANDIDATE_COUNT = 286;
+  private static final int LOOSE_CANDIDATE_COUNT = 200;
+  private static final int LOOSE_CANDIDATE_COUNT_WITHOUT_SECOND_ONSITE = 86;
 
   private static final int ASSIGN_HIRING_MANAGER_CANCEL_COUNT = 208;
   private static final int SCREEN_APPLICATION_CANCEL_COUNT = 1800;
@@ -361,6 +389,10 @@ public class Main {
       startProcessInstance(createHappyPath());
     }
     System.out.println("Finished with happy path count");
+    for (int i = 0; i < HAPPY_PATH_COUNT_WITHOUT_SECOND_ONSITE; i++) {
+      startProcessInstance(createHappyPathWihtouSecondOnsiteInterview());
+    }
+    System.out.println("Finished with happy path without seconds onsite interview");
     for (int i = 0; i < REJECT_AFTER_SCREENING_COUNT; i++) {
       startProcessInstance(rejectCandidateAfterScreenApplication());
     }
@@ -376,7 +408,12 @@ public class Main {
     for (int i = 0; i < LOOSE_CANDIDATE_COUNT; i++) {
       startProcessInstance(looseCandidate());
     }
-    System.out.println("Finished with loose candidate");
+
+    System.out.println("Finished with loose candidate ");
+    for (int i = 0; i < LOOSE_CANDIDATE_COUNT_WITHOUT_SECOND_ONSITE; i++) {
+      startProcessInstance(looseCandidateWihtoutSecondOnsiteinterview());
+    }
+    System.out.println("Finished with loose candidate without second onsite interview");
     // complete all tasks
     UserTaskCompleter userTaskCompleter = new UserTaskCompleter();
     userTaskCompleter.completeAllUserTasks();
