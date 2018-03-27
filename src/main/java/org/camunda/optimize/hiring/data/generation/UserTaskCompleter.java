@@ -41,7 +41,7 @@ public class UserTaskCompleter {
 
   public void completeUserTasks(String taskDefinitionKey) {
     CloseableHttpClient client = HttpClientBuilder.create().build();
-    HttpGet get = new HttpGet("http://localhost:8080/engine-rest/task/");
+    HttpGet get = new HttpGet("http://localhost:8080/engine-rest/task?processDefinitionKey=hiring-demo");
     if (taskDefinitionKey != null) {
       URI uri = null;
       try {
